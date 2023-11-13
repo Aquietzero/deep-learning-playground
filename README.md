@@ -25,9 +25,16 @@ Visit [http://localhost:9966](http://localhost:9966)
 
 ## TODOs
 
-[] OBB
-[] DOP
-[] Dynamic bounding volume calculation for all kind
-[] Voronoi region for polyhedron
-[] DK hierarchy
-[] GJK algorithm
+- [ ] setup a general grid world environment
+- [ ] add grid game
+- [ ] general training process visualization
+    - [ ] stepwise train visualization
+    - [ ] train methods
+      - [ ] DQN
+      - [ ] DQN with target network
+      - [ ] policy gradient
+- [ ] general learning process visualization
+    - [ ] methods comparison
+    - [ ] learning graph
+    - [ ] learning data
+    - [ ] persistence
