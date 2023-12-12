@@ -12,6 +12,7 @@ import * as echarts from 'echarts'
 import { io } from 'socket.io-client'
 
 const socket = io('http://127.0.0.1:5000')
+const modelName = 'random-gridworld-q-learning-simple-network'
 
 const BasicGridWorld: React.FC = () => {
   const gridLength = 100
@@ -189,20 +190,21 @@ const BasicGridWorld: React.FC = () => {
 
   const train = async () => {
     const res = await axios.post('http://127.0.0.1:5000/gridworld/train', {
-      modelName: 'gridworld-q-learning-simple-network'
+      modelName,
+      mode: 'random',
     })
   }
 
   const getPolicy = async () => {
-    const res = await axios.post('http://127.0.0.1:5000/gridworld/model_policy', {
-      modelName: 'gridworld-q-learning-simple-network'
-    })
+    const res = await axios.post('http://127.0.0.1:5000/gridworld/model_policy', { modelName })
+    setMap(res.data.map)
     setPolicy(res.data.map)
   }
 
   const testModel = async () => {
     const res = await axios.post('http://127.0.0.1:5000/gridworld/model_test', {
-      modelName: 'gridworld-q-learning-simple-network'
+      modelName,
+      mode: 'random',
     })
     setPolicy(res.data.map)
   }
