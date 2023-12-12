@@ -6,7 +6,7 @@ import {
   ArrowRightOutlined,
   ArrowDownOutlined,
 } from '@ant-design/icons'
-import { Progress } from 'antd'
+import { Progress, Button } from 'antd'
 import axios from 'axios'
 import * as echarts from 'echarts'
 import { io } from 'socket.io-client'
@@ -16,12 +16,13 @@ const socket = io('http://127.0.0.1:5000')
 const BasicGridWorld: React.FC = () => {
   const gridLength = 100
   const margin = 0
-  const size = 4
+  const size = 5
   const board = _.times(size, row => _.times(size, col => row * size + col))
   const [currentState, setCurrentState] = React.useState(0)
   const [map, setMap] = React.useState({} as any)
   const [policy, setPolicy] = React.useState({} as any)
   const [trainingProgress, setTrainingProgress] = React.useState(0)
+  const [testProgress, setTestProgress] = React.useState(0)
 
   const renderBoard = () => (
     <>
@@ -54,30 +55,26 @@ const BasicGridWorld: React.FC = () => {
                     {id === currentState && <div className="w-5 h-5 rounded-full bg-black"></div>}
                     {map?.[id]?.type === 'goal' && <div className="text-lg text-black">GOAL</div>}
                     {map?.[id]?.type === 'pit' && <div className="text-lg text-black">PIT</div>}
-                    <div
-                      className="absolute flex items-center top-2 left-1/2 -translate-x-1/2"
-                      style={{ opacity: policy?.[id]?.q_values[0] }}
-                    >
-                      <ArrowUpOutlined />
-                    </div>
-                    <div
-                      className="absolute flex items-center right-2 top-1/2 -translate-y-1/2"
-                      style={{ opacity: policy?.[id]?.q_values[1] }}
-                    >
-                      <ArrowRightOutlined />
-                    </div>
-                    <div
-                      className="absolute flex items-center bottom-2 left-1/2 -translate-x-1/2"
-                      style={{ opacity: policy?.[id]?.q_values[2] }}
-                    >
-                      <ArrowDownOutlined />
-                    </div>
-                    <div
-                      className="absolute flex items-center left-2 top-1/2 -translate-y-1/2"
-                      style={{ opacity: policy?.[id]?.q_values[3] }}
-                    >
-                      <ArrowLeftOutlined />
-                    </div>
+                    {map?.[id]?.type !== 'pit' && map?.[id]?.type !== 'goal' && (
+                      <>
+                        <div
+                          className="absolute flex items-center top-2 left-1/2 -translate-x-1/2"
+                          style={{ opacity: policy?.[id]?.q_values[0] }}
+                        ><ArrowUpOutlined /></div>
+                        <div
+                          className="absolute flex items-center right-2 top-1/2 -translate-y-1/2"
+                          style={{ opacity: policy?.[id]?.q_values[1] }}
+                        ><ArrowRightOutlined /></div>
+                        <div
+                          className="absolute flex items-center bottom-2 left-1/2 -translate-x-1/2"
+                          style={{ opacity: policy?.[id]?.q_values[2] }}
+                        ><ArrowDownOutlined /></div>
+                        <div
+                          className="absolute flex items-center left-2 top-1/2 -translate-y-1/2"
+                          style={{ opacity: policy?.[id]?.q_values[3] }}
+                        ><ArrowLeftOutlined /></div>
+                      </>
+                    )}
                   </div>
                 )
               })}
@@ -90,19 +87,22 @@ const BasicGridWorld: React.FC = () => {
 
   const renderChart = () => {
     const losses: number[] = []
+    const successRates: number[] = []
     let movingAvgSum = 0;
     const movingAvgWindow: number[] = [];
-    const movingAvgSize = 50;
+    const movingAvgSize = 20;
     const chart = echarts.init(document.getElementById('loss'))
+    const testChart = echarts.init(document.getElementById('success-rate'))
 
     chart.resize({ width: 600, height: 300 })
+    testChart.resize({ width: 600, height: 300 })
 
-    chart.setOption({
+    const defaultOption = (title: string) => ({
       grid: {
         right: '20%'
       },
       title: {
-        text: 'losses',
+        text: title,
         x: 'center',
       } as any,
       xAxis: {
@@ -126,7 +126,10 @@ const BasicGridWorld: React.FC = () => {
           // color: 'black',
         },
       }] as any
-    })
+    }) as any
+
+    chart.setOption(defaultOption('Losses'))
+    testChart.setOption(defaultOption('Success Rate'))
 
     socket.on('training_info', (data) => {
       if (losses.length === movingAvgSize) {
@@ -135,7 +138,7 @@ const BasicGridWorld: React.FC = () => {
       movingAvgSum += data.loss
       movingAvgWindow.push(data.loss)
 
-      losses.push(movingAvgSum / movingAvgWindow.length)
+      losses.push(data.loss)
       chart.setOption({
         series: [{
           type: 'line',
@@ -143,6 +146,24 @@ const BasicGridWorld: React.FC = () => {
             valueFormatter: (value: any) => value.toFixed(6),
           },
           data: _.map(losses, (y, x) => [x, y]),
+          symbol: 'none',
+          smooth: true,
+          lineStyle: {
+            // color: 'black',
+          },
+        }] as any
+      })
+    })
+
+    socket.on('testing_info', (data) => {
+      successRates.push(data.success_rate)
+      testChart.setOption({
+        series: [{
+          type: 'line',
+          tooltip: {
+            valueFormatter: (value: any) => value.toFixed(6),
+          },
+          data: _.map(successRates, (y, x) => [x, y]),
           symbol: 'none',
           smooth: true,
           lineStyle: {
@@ -172,8 +193,15 @@ const BasicGridWorld: React.FC = () => {
     })
   }
 
+  const getPolicy = async () => {
+    const res = await axios.post('http://127.0.0.1:5000/gridworld/model_policy', {
+      modelName: 'gridworld-q-learning-simple-network'
+    })
+    setPolicy(res.data.map)
+  }
+
   const testModel = async () => {
-    const res = await axios.post('http://127.0.0.1:5000/gridworld/test_model', {
+    const res = await axios.post('http://127.0.0.1:5000/gridworld/model_test', {
       modelName: 'gridworld-q-learning-simple-network'
     })
     setPolicy(res.data.map)
@@ -186,23 +214,31 @@ const BasicGridWorld: React.FC = () => {
       console.log('connected', socket.id)
     })
     socket.on('progress', (data) => {
-      setTrainingProgress(data.current / data.epochs)
+      setTrainingProgress(Math.ceil(data.current / data.epochs * 100))
+    })
+    socket.on('test_progress', (data) => {
+      setTestProgress(Math.ceil(data.current / data.num_games * 100))
     })
 
     renderChart()
   }, [])
 
   return (
-    <div className="flex flex-col">
+    <div className="">
       <div>{renderBoard()}</div>
       <div onClick={(e) => step(0)}>up</div>
       <div onClick={(e) => step(1)}>right</div>
       <div onClick={(e) => step(2)}>down</div>
       <div onClick={(e) => step(3)}>left</div>
-      <div onClick={(e) => train()}>train</div>
-      <div onClick={(e) => testModel()}>test model</div>
-      <Progress percent={Math.ceil(trainingProgress * 100)} />
+      <Button className="mr-2" type="primary" onClick={(e) => train()}>train</Button>
+      <Button className="mr-2" type="primary" onClick={(e) => getPolicy()}>policy</Button>
+      <Button className="mr-2" type="primary" onClick={(e) => testModel()}>test</Button>
+      <div>Training Progress</div>
+      <Progress type="circle" percent={trainingProgress} />
+      <div>Test Progress</div>
+      <Progress type="circle" percent={testProgress} />
       <div className="mt-20" id="loss" />
+      <div className="mt-20" id="success-rate" />
     </div>
   )
 }
