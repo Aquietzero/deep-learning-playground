@@ -7,13 +7,14 @@ import {
   ArrowDownOutlined,
   FlagOutlined,
 } from '@ant-design/icons'
-import { Progress, Button } from 'antd'
+import { Button, Tabs } from 'antd'
 import axios from 'axios'
-import * as echarts from 'echarts'
 import { io } from 'socket.io-client'
 import { Panel } from './panel'
 import { Events } from '@DLPlayground/core/events'
 import { TrainConfig, TestConfig } from '@DLPlayground/types/deep-learning'
+import { TrainingBoard } from './training-board'
+import { TestBoard } from './test-board'
 
 const socket = io('http://127.0.0.1:5000')
 const modelName = 'random-gridworld-q-learning-target-network'
@@ -26,8 +27,7 @@ const BasicGridWorld: React.FC = () => {
   const [currentState, setCurrentState] = React.useState(0)
   const [map, setMap] = React.useState({} as any)
   const [policy, setPolicy] = React.useState({} as any)
-  const [trainingProgress, setTrainingProgress] = React.useState(0)
-  const [testProgress, setTestProgress] = React.useState(0)
+  const [currentTab, setCurrentTab] = React.useState('train')
 
   const renderBoard = () => (
     <>
@@ -90,95 +90,6 @@ const BasicGridWorld: React.FC = () => {
     </>
   )
 
-  const renderChart = () => {
-    const losses: number[] = []
-    const successRates: number[] = []
-    let movingAvgSum = 0;
-    const movingAvgWindow: number[] = [];
-    const movingAvgSize = 20;
-    const chart = echarts.init(document.getElementById('loss'))
-    const testChart = echarts.init(document.getElementById('success-rate'))
-
-    chart.resize({ width: 600, height: 300 })
-    testChart.resize({ width: 600, height: 300 })
-
-    const defaultOption = (title: string) => ({
-      grid: {
-        right: '20%'
-      },
-      title: {
-        text: title,
-        x: 'center',
-      } as any,
-      xAxis: {
-        type: 'value',
-      } as any,
-      yAxis: {
-        type: 'value',
-        splitLine: {
-          show: true,
-        }
-      },
-      series: [{
-        type: 'line',
-        tooltip: {
-          valueFormatter: (value: any) => value.toFixed(6),
-        },
-        data: _.map(losses, (y, x) => [x, y]),
-        symbol: 'none',
-        smooth: true,
-        lineStyle: {
-          // color: 'black',
-        },
-      }] as any
-    }) as any
-
-    chart.setOption(defaultOption('Losses'))
-    testChart.setOption(defaultOption('Success Rate'))
-
-    socket.on('training_info', (data) => {
-      if (losses.length === movingAvgSize) {
-        movingAvgSum -= movingAvgWindow.shift()
-      }
-      movingAvgSum += data.loss
-      movingAvgWindow.push(data.loss)
-
-      losses.push(data.loss)
-      chart.setOption({
-        series: [{
-          type: 'line',
-          tooltip: {
-            valueFormatter: (value: any) => value.toFixed(6),
-          },
-          data: _.map(losses, (y, x) => [x, y]),
-          symbol: 'none',
-          smooth: true,
-          lineStyle: {
-            // color: 'black',
-          },
-        }] as any
-      })
-    })
-
-    socket.on('testing_info', (data) => {
-      successRates.push(data.success_rate)
-      testChart.setOption({
-        series: [{
-          type: 'line',
-          tooltip: {
-            valueFormatter: (value: any) => value.toFixed(6),
-          },
-          data: _.map(successRates, (y, x) => [x, y]),
-          symbol: 'none',
-          smooth: true,
-          lineStyle: {
-            // color: 'black',
-          },
-        }] as any
-      })
-    })
-  }
-
   const fetchMap = async () => {
     const res = await axios.get('http://127.0.0.1:5000/gridworld/map')
     setMap(res.data.map)
@@ -205,29 +116,32 @@ const BasicGridWorld: React.FC = () => {
     socket.on('connect', () => {
       console.log('connected', socket.id)
     })
-    socket.on('progress', (data) => {
-      setTrainingProgress(Math.ceil(data.current / data.epochs * 100))
-    })
-    socket.on('test_progress', (data) => {
-      setTestProgress(Math.ceil(data.current / data.num_games * 100))
-    })
 
-    Events.on('DL:Train', (config) => train(config))
-    Events.on('DL:Test', (config) => test(config))
-
-    renderChart()
+    Events.on('DL:Train', (config) => {
+      setCurrentTab('train')
+      train(config)
+    })
+    Events.on('DL:Test', (config) => {
+      setCurrentTab('test')
+      test(config)
+    })
   }, [])
 
   return (
     <div className="">
       <div>{renderBoard()}</div>
       <Button className="mr-2" type="primary" onClick={(e) => getPolicy()}>View Policy</Button>
-      <div>Training Progress</div>
-      <Progress type="circle" percent={trainingProgress} />
-      <div>Test Progress</div>
-      <Progress type="circle" percent={testProgress} />
-      <div className="mt-20" id="loss" />
-      <div className="mt-20" id="success-rate" />
+      <Tabs
+        activeKey={currentTab}
+        onChange={(key) => setCurrentTab(key)}
+      >
+        <Tabs.TabPane tab="Training Board" key="train">
+          <TrainingBoard />
+        </Tabs.TabPane>
+        <Tabs.TabPane tab="Test Board" key="test">
+          <TestBoard />
+        </Tabs.TabPane>
+      </Tabs>
     </div>
   )
 }
@@ -238,7 +152,13 @@ export default {
   panel: Panel,
   run(app: any) {
     return (
-      <div className="w-full h-full flex justify-center overflow-scroll">
+      <div
+        className="w-full h-full overflow-scroll"
+        style={{
+          paddingTop: 100,
+          paddingLeft: 300,
+        }}
+      >
         <BasicGridWorld />
       </div>
     )
