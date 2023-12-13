@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useParams } from 'react-router-dom'
-import { Nav } from '@TRE/playground/components/nav'
-import examples from '@TRE/playground/examples'
+import { Nav } from '@DLPlayground/playground/components/nav'
+import examples from '@DLPlayground/playground/examples'
 
 interface Props {
 }

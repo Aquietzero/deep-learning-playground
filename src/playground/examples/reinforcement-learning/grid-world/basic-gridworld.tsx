@@ -5,14 +5,18 @@ import {
   ArrowLeftOutlined,
   ArrowRightOutlined,
   ArrowDownOutlined,
+  FlagOutlined,
 } from '@ant-design/icons'
 import { Progress, Button } from 'antd'
 import axios from 'axios'
 import * as echarts from 'echarts'
 import { io } from 'socket.io-client'
+import { Panel } from './panel'
+import { Events } from '@DLPlayground/core/events'
+import { TrainConfig, TestConfig } from '@DLPlayground/types/deep-learning'
 
 const socket = io('http://127.0.0.1:5000')
-const modelName = 'random-gridworld-q-learning-simple-network'
+const modelName = 'random-gridworld-q-learning-target-network'
 
 const BasicGridWorld: React.FC = () => {
   const gridLength = 100
@@ -54,8 +58,8 @@ const BasicGridWorld: React.FC = () => {
                     }}
                   >
                     {id === currentState && <div className="w-5 h-5 rounded-full bg-black"></div>}
-                    {map?.[id]?.type === 'goal' && <div className="text-lg text-black">GOAL</div>}
-                    {map?.[id]?.type === 'pit' && <div className="text-lg text-black">PIT</div>}
+                    {map?.[id]?.type === 'goal' && <div className="text-3xl text-red-500"><FlagOutlined /></div>}
+                    {map?.[id]?.type === 'pit' && <div className="text-lg font-bold text-black">PIT</div>}
                     {map?.[id]?.type !== 'pit' && map?.[id]?.type !== 'goal' && (
                       <>
                         <div
@@ -175,24 +179,13 @@ const BasicGridWorld: React.FC = () => {
     })
   }
 
-  const step = async (action: number) => {
-    const res = await axios.post('http://127.0.0.1:5000/gridworld/step', {
-        state: currentState,
-        action: action,
-    })
-    setCurrentState(res.data.next_state)
-  }
-
   const fetchMap = async () => {
     const res = await axios.get('http://127.0.0.1:5000/gridworld/map')
     setMap(res.data.map)
   }
 
-  const train = async () => {
-    const res = await axios.post('http://127.0.0.1:5000/gridworld/train', {
-      modelName,
-      mode: 'random',
-    })
+  const train = async (config: TrainConfig) => {
+    const res = await axios.post('http://127.0.0.1:5000/gridworld/train', config)
   }
 
   const getPolicy = async () => {
@@ -201,11 +194,8 @@ const BasicGridWorld: React.FC = () => {
     setPolicy(res.data.map)
   }
 
-  const testModel = async () => {
-    const res = await axios.post('http://127.0.0.1:5000/gridworld/model_test', {
-      modelName,
-      mode: 'random',
-    })
+  const test = async (config: TestConfig) => {
+    const res = await axios.post('http://127.0.0.1:5000/gridworld/model_test', config)
     setPolicy(res.data.map)
   }
 
@@ -222,19 +212,16 @@ const BasicGridWorld: React.FC = () => {
       setTestProgress(Math.ceil(data.current / data.num_games * 100))
     })
 
+    Events.on('DL:Train', (config) => train(config))
+    Events.on('DL:Test', (config) => test(config))
+
     renderChart()
   }, [])
 
   return (
     <div className="">
       <div>{renderBoard()}</div>
-      <div onClick={(e) => step(0)}>up</div>
-      <div onClick={(e) => step(1)}>right</div>
-      <div onClick={(e) => step(2)}>down</div>
-      <div onClick={(e) => step(3)}>left</div>
-      <Button className="mr-2" type="primary" onClick={(e) => train()}>train</Button>
-      <Button className="mr-2" type="primary" onClick={(e) => getPolicy()}>policy</Button>
-      <Button className="mr-2" type="primary" onClick={(e) => testModel()}>test</Button>
+      <Button className="mr-2" type="primary" onClick={(e) => getPolicy()}>View Policy</Button>
       <div>Training Progress</div>
       <Progress type="circle" percent={trainingProgress} />
       <div>Test Progress</div>
@@ -248,6 +235,7 @@ const BasicGridWorld: React.FC = () => {
 export default {
   description: 'basic grid world.',
   notCanvas: true,
+  panel: Panel,
   run(app: any) {
     return (
       <div className="w-full h-full flex justify-center overflow-scroll">

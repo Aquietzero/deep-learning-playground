@@ -8,8 +8,8 @@ import {
 } from '@ant-design/icons'
 import {
   policyIterationGenerator,
-} from '@TRE/reinforcement-learning/policy'
-import { FL_MDP } from '@TRE/reinforcement-learning/mdps/fl'
+} from '@DLPlayground/reinforcement-learning/policy'
+import { FL_MDP } from '@DLPlayground/reinforcement-learning/mdps/fl'
 
 const size = 10
 const mdp = new FL_MDP(size)

@@ -2,7 +2,7 @@ import * as React from 'react'
 import * as _ from 'lodash'
 import classnames from 'classnames'
 import { Link, useParams } from 'react-router-dom'
-import examples from '@TRE/playground/examples'
+import examples from '@DLPlayground/playground/examples'
 
 interface Props {
 }

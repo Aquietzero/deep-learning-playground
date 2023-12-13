@@ -13,8 +13,8 @@ import {
   goGetItPolicy,
   policyIteration,
   valueIteration,
-} from '@TRE/reinforcement-learning/policy'
-import { FL_MDP } from '@TRE/reinforcement-learning/mdps/fl'
+} from '@DLPlayground/reinforcement-learning/policy'
+import { FL_MDP } from '@DLPlayground/reinforcement-learning/mdps/fl'
 
 const FrozenLake: React.FC = () => {
   const gridLength = 100

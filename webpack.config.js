@@ -22,7 +22,7 @@ module.exports = {
   resolve: {
     extensions: ['.ts', '.tsx', '.js'],
     alias: {
-      '@TRE': path.resolve(__dirname, 'src'),
+      '@DLPlayground': path.resolve(__dirname, 'src'),
     }
   },
   module: {

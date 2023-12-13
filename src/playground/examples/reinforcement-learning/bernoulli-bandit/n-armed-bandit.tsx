@@ -2,7 +2,7 @@
 import * as React from 'react'
 import * as echarts from 'echarts'
 import * as _ from 'lodash'
-import { BSW_MDP } from '@TRE/reinforcement-learning/mdps/bsw'
+import { BSW_MDP } from '@DLPlayground/reinforcement-learning/mdps/bsw'
 import { fetchResults } from '../utils'
 const mdp = new BSW_MDP()
 const gridLength = 80
