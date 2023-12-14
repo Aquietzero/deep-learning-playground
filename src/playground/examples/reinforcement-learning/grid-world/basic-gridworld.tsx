@@ -7,26 +7,28 @@ import {
   ArrowDownOutlined,
   FlagOutlined,
 } from '@ant-design/icons'
-import { Button, Tabs } from 'antd'
+import { Button, Tabs, Tooltip } from 'antd'
 import axios from 'axios'
 import { io } from 'socket.io-client'
 import { Panel } from './panel'
 import { Events } from '@DLPlayground/core/events'
-import { TrainConfig, TestConfig } from '@DLPlayground/types/deep-learning'
+import { TrainConfig, TestConfig, EnvParams } from '@DLPlayground/types/deep-learning'
 import { TrainingBoard } from './training-board'
 import { TestBoard } from './test-board'
 
 const socket = io('http://127.0.0.1:5000')
-const modelName = 'random-gridworld-q-learning-target-network'
 
 const BasicGridWorld: React.FC = () => {
   const gridLength = 100
   const margin = 0
-  const size = 5
-  const board = _.times(size, row => _.times(size, col => row * size + col))
+  const [modelName, setModelName] = React.useState('random-gridworld-q-learning-target-network-5-3')
+  const [size, setSize] = React.useState(5)
+  const [pits, setPits] = React.useState(3)
+  const [board, setBoard] = React.useState([])
   const [currentState, setCurrentState] = React.useState(0)
   const [map, setMap] = React.useState({} as any)
   const [policy, setPolicy] = React.useState({} as any)
+  const [path, setPath] = React.useState([] as any)
   const [currentTab, setCurrentTab] = React.useState('train')
 
   const renderBoard = () => (
@@ -55,6 +57,7 @@ const BasicGridWorld: React.FC = () => {
                       width: gridLength,
                       height: gridLength,
                       transition: 'transform 0.2s ease',
+                      background: _.includes(path, Number(id)) ? '#ddd' : 'white',
                     }}
                   >
                     {id === currentState && <div className="w-5 h-5 rounded-full bg-black"></div>}
@@ -64,20 +67,36 @@ const BasicGridWorld: React.FC = () => {
                       <>
                         <div
                           className="absolute flex items-center top-2 left-1/2 -translate-x-1/2"
-                          style={{ opacity: policy?.[id]?.q_values[0] }}
-                        ><ArrowUpOutlined /></div>
+                          style={{ opacity: policy?.[id]?.q_values[0] / Math.max(...(policy?.[id]?.q_values || [])) }}
+                        >
+                          <Tooltip placement="top" title={policy?.[id]?.q_values[0]?.toFixed(8)}>
+                            <ArrowUpOutlined />
+                          </Tooltip>
+                        </div>
                         <div
                           className="absolute flex items-center right-2 top-1/2 -translate-y-1/2"
-                          style={{ opacity: policy?.[id]?.q_values[1] }}
-                        ><ArrowRightOutlined /></div>
+                          style={{ opacity: policy?.[id]?.q_values[1] / Math.max(...(policy?.[id]?.q_values || [])) }}
+                        >
+                          <Tooltip placement="right" title={policy?.[id]?.q_values[1]?.toFixed(8)}>
+                            <ArrowRightOutlined />
+                          </Tooltip>
+                        </div>
                         <div
                           className="absolute flex items-center bottom-2 left-1/2 -translate-x-1/2"
-                          style={{ opacity: policy?.[id]?.q_values[2] }}
-                        ><ArrowDownOutlined /></div>
+                          style={{ opacity: policy?.[id]?.q_values[2] / Math.max(...(policy?.[id]?.q_values || [])) }}
+                        >
+                          <Tooltip placement="bottom" title={policy?.[id]?.q_values[2]?.toFixed(8)}>
+                            <ArrowDownOutlined />
+                          </Tooltip>
+                        </div>
                         <div
                           className="absolute flex items-center left-2 top-1/2 -translate-y-1/2"
-                          style={{ opacity: policy?.[id]?.q_values[3] }}
-                        ><ArrowLeftOutlined /></div>
+                          style={{ opacity: policy?.[id]?.q_values[3] / Math.max(...(policy?.[id]?.q_values) || []) }}
+                        >
+                          <Tooltip placement="left" title={policy?.[id]?.q_values[3]?.toFixed(8)}>
+                            <ArrowLeftOutlined />
+                          </Tooltip>
+                        </div>
                       </>
                     )}
                   </div>
@@ -90,28 +109,39 @@ const BasicGridWorld: React.FC = () => {
     </>
   )
 
-  const fetchMap = async () => {
-    const res = await axios.get('http://127.0.0.1:5000/gridworld/map')
+  const fetchMap = React.useCallback(async () => {
+    const res = await axios.post('http://127.0.0.1:5000/gridworld/map', {
+      size, pits, mode: 'random',
+    })
     setMap(res.data.map)
-  }
+  }, [size, pits])
 
   const train = async (config: TrainConfig) => {
     const res = await axios.post('http://127.0.0.1:5000/gridworld/train', config)
   }
 
-  const getPolicy = async () => {
-    const res = await axios.post('http://127.0.0.1:5000/gridworld/model_policy', { modelName })
+  const getPolicy = React.useCallback(async () => {
+    const res = await axios.post('http://127.0.0.1:5000/gridworld/model_policy', {
+      model_name: modelName,
+      env_params: { size, pits, mode: 'random' }
+    })
     setMap(res.data.map)
     setPolicy(res.data.map)
-  }
+    setPath(res.data.result?.path)
+  }, [size, pits, modelName])
 
   const test = async (config: TestConfig) => {
     const res = await axios.post('http://127.0.0.1:5000/gridworld/model_test', config)
     setPolicy(res.data.map)
   }
 
+  const updateBoard = React.useCallback(() => {
+    setBoard(_.times(size, row => _.times(size, col => row * size + col)))
+  }, [size])
+
   React.useEffect(() => {
     fetchMap()
+    setBoard(_.times(size, row => _.times(size, col => row * size + col)))
 
     socket.on('connect', () => {
       console.log('connected', socket.id)
@@ -125,7 +155,21 @@ const BasicGridWorld: React.FC = () => {
       setCurrentTab('test')
       test(config)
     })
+    Events.on('DL:Env:size', (size) => {
+      setSize(size)
+    })
+    Events.on('DL:Env:pits', (pits) => {
+      setPits(pits)
+    })
+    Events.on('DL:Env:modelName', (name) => {
+      setModelName(name)
+    })
   }, [])
+
+  React.useEffect(() => {
+    fetchMap()
+    updateBoard()
+  }, [pits, size])
 
   return (
     <div className="">

@@ -24,8 +24,14 @@ export const TrainingBoard: React.FC<Props> = (props: Props) => {
         show: true,
       }
     },
+    animation: false,
     tooltip: {
       trigger: 'axis',
+      axisPointer: {
+        label: {
+          formatter: (params: any) => `episode: ${params.value}`
+        }
+      }
     },
     series: [{
       type: 'line',

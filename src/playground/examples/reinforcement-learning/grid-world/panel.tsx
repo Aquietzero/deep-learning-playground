@@ -6,10 +6,11 @@ import { Events } from '@DLPlayground/core/events'
 interface Props {}
 
 export const Panel: React.FC<Props> = (props: Props) => {
-  const [modelName, setModelName] = React.useState('random-gridworld-q-learning-target-network')
+  const [modelName, setModelName] = React.useState('random-gridworld-q-learning-target-network-5-3')
 
   // env config
   const [size, setSize] = React.useState(5)
+  const [pits, setPits] = React.useState(3)
   const [mode, setMode] = React.useState('random')
 
   // train config
@@ -64,14 +65,40 @@ export const Panel: React.FC<Props> = (props: Props) => {
       <div className="text-lg mt-5 font-bold">Model</div>
       <div className="my-2 flex flex-col">
         <div>Name</div>
-        <Input value={modelName} onChange={(e: any) => setModelName(e.target.value)} />
+        <Input
+          value={modelName}
+          onChange={(e: any) => {
+            setModelName(e.target.value)
+            Events.emit('DL:Env:modelName', e.target.value)
+          }}
+        />
       </div>
 
       {/* env config */}
       <div className="text-lg mt-5 font-bold">Environment Configs</div>
       <div className="my-2 flex items-center justify-between">
         <div>Grid Size</div>
-        <InputNumber min={4} max={10} value={size} onChange={(v) => setSize(v)} />
+        <InputNumber
+          min={4}
+          max={10}
+          value={size}
+          onChange={(v) => {
+            setSize(v)
+            Events.emit('DL:Env:size', v)
+          }}
+        />
+      </div>
+      <div className="my-2 flex items-center justify-between">
+        <div>Number of Pits</div>
+        <InputNumber
+          min={2}
+          max={10}
+          value={pits}
+          onChange={(v) => {
+            setPits(v)
+            Events.emit('DL:Env:pits', v)
+          }}
+        />
       </div>
       <div className="my-2 flex flex-col">
         <div className="mb-2">Mode</div>

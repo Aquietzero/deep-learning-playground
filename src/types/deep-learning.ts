@@ -1,6 +1,7 @@
 
 export interface EnvParams {
   size: number,
+  pits: number,
   mode: 'static' | 'random',
 }
 

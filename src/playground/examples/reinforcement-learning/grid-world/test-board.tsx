@@ -25,7 +25,13 @@ export const TestBoard: React.FC<Props> = (props: Props) => {
     },
     tooltip: {
       trigger: 'axis',
+      axisPointer: {
+        label: {
+          formatter: (params: any) => `episode: ${params.value}`
+        }
+      }
     },
+    animation: false,
     series: [{
       type: 'line',
       tooltip: {
